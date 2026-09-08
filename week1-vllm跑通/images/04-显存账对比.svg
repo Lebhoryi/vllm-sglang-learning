@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680"><style>text{font-family:'Noto Sans CJK SC',sans-serif}</style>
+<defs><filter id="s1" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#00000022"/></filter></defs>
+<rect width="1100" height="680" fill="#FDF8EF"/>
+<text x="550" y="56" font-size="30" font-weight="700" text-anchor="middle" fill="#333333">80 GiB 显存怎么分？</text>
+<text x="550" y="90" font-size="15" text-anchor="middle" fill="#8a8a8a">同一块 A100 · 0.8B 和 27B 的两种活法</text>
+<rect x="250" y="118" width="600" height="40" rx="20" fill="#ffffff" stroke="#E5DCCE" stroke-width="1.5"/>
+<circle cx="306" cy="138" r="6" fill="#F4B740"/>
+<text x="320" y="143" font-size="14" text-anchor="start" fill="#555555">权重</text>
+<circle cx="456" cy="138" r="6" fill="#A78BFA"/>
+<text x="470" y="143" font-size="14" text-anchor="start" fill="#555555">峰值激活</text>
+<circle cx="606" cy="138" r="6" fill="#F472B6"/>
+<text x="620" y="143" font-size="14" text-anchor="start" fill="#555555">CUDA graph</text>
+<circle cx="756" cy="138" r="6" fill="#5B8DEF"/>
+<text x="770" y="143" font-size="14" text-anchor="start" fill="#555555">KV cache</text>
+<text x="300" y="208" font-size="21" font-weight="700" text-anchor="middle" fill="#2F6BDF">0.8B 解剖模型</text>
+<text x="300" y="232" font-size="13.5" text-anchor="middle" fill="#8a8a8a">总占用 79.25 GiB · 利用率 92%</text>
+<text x="800" y="208" font-size="21" font-weight="700" text-anchor="middle" fill="#E8770A">27B 实战模型</text>
+<text x="800" y="232" font-size="13.5" text-anchor="middle" fill="#8a8a8a">总占用 79.25 GiB · 利用率 92%</text>
+<line x1="140" y1="480" x2="960" y2="480" stroke="#EBE3D5" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="128" y="485" font-size="12.5" text-anchor="end" fill="#b0a89c">20G</text>
+<line x1="140" y1="400" x2="960" y2="400" stroke="#EBE3D5" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="128" y="405" font-size="12.5" text-anchor="end" fill="#b0a89c">40G</text>
+<line x1="140" y1="320" x2="960" y2="320" stroke="#EBE3D5" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="128" y="325" font-size="12.5" text-anchor="end" fill="#b0a89c">60G</text>
+<line x1="140" y1="240" x2="960" y2="240" stroke="#EBE3D5" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="128" y="245" font-size="12.5" text-anchor="end" fill="#b0a89c">80G</text>
+<rect x="210" y="292" width="180" height="268" rx="6" fill="#5B8DEF"/>
+<rect x="210" y="275" width="180" height="17" rx="3" fill="#F4B740"/>
+<rect x="210" y="269" width="180" height="6" fill="#A78BFA"/>
+<rect x="210" y="265" width="180" height="4" fill="#F472B6"/>
+<text x="300" y="432" font-size="15" font-weight="700" text-anchor="middle" fill="#ffffff">KV cache 67.08 GiB</text>
+<text x="396" y="288" font-size="11.5" text-anchor="start" fill="#6a6a6a">权重 4.31 GiB</text>
+<text x="396" y="274" font-size="11.5" text-anchor="start" fill="#6a6a6a">激活+graph ≈ 1.94 GiB</text>
+<rect x="710" y="486" width="180" height="74" rx="6" fill="#5B8DEF"/>
+<rect x="710" y="280" width="180" height="206" rx="6" fill="#F4B740"/>
+<rect x="710" y="269" width="180" height="11" fill="#A78BFA"/>
+<rect x="710" y="265" width="180" height="4" fill="#F472B6"/>
+<text x="800" y="522" font-size="15" font-weight="700" text-anchor="middle" fill="#ffffff">KV cache 18.61 GiB</text>
+<text x="800" y="385" font-size="15" font-weight="700" text-anchor="middle" fill="#ffffff">权重 51.61 GiB</text>
+<text x="896" y="277" font-size="11.5" text-anchor="start" fill="#6a6a6a">激活+graph ≈ 3.65 GiB</text>
+<g filter="url(#s1)"><rect x="105" y="598" width="400" height="56" rx="16" fill="#E9F1FF" stroke="#5B8DEF" stroke-width="2"/></g>
+<text x="305" y="622" font-size="14.5" font-weight="700" text-anchor="middle" fill="#2F6BDF">KV 库 579 万 token · 262K 长文并发 22 路</text>
+<text x="305" y="643" font-size="12.5" text-anchor="middle" fill="#5a7dbd">小模型：显存大头全给了 KV，能扛很多长请求</text>
+<g filter="url(#s1)"><rect x="590" y="598" width="410" height="56" rx="16" fill="#FFF3E4" stroke="#E8770A" stroke-width="2"/></g>
+<text x="795" y="622" font-size="14.5" font-weight="700" text-anchor="middle" fill="#E8770A">KV 库只剩 29.8 万 token · 并发 1.14 路</text>
+<text x="795" y="643" font-size="12.5" text-anchor="middle" fill="#c07a2a">大模型：权重挤占显存 → 必须 --max-model-len 限长</text>
+<text x="550" y="672" font-size="13.5" text-anchor="middle" fill="#8a8a8a">单 token KV 单价：0.8B ≈ 12.4 KB vs 27B ≈ 67 KB（层数 / GQA 头数不同）</text>
+</svg>

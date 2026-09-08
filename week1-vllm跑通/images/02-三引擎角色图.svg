@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 570"><style>text{font-family:'Noto Sans CJK SC',sans-serif}</style>
+<defs><filter id="s1" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#00000022"/></filter><marker id="a1" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#C9BFAF"/></marker></defs>
+<rect width="1100" height="570" fill="#FDF8EF"/>
+<text x="550" y="56" font-size="30" font-weight="700" text-anchor="middle" fill="#333333">三个引擎，各司其职</text>
+<text x="550" y="90" font-size="15" text-anchor="middle" fill="#8a8a8a">transformers 定标准 · vLLM 冲性能 · SGLang 来对照</text>
+<g filter="url(#s1)"><rect x="55" y="135" width="320" height="255" rx="22" fill="#FFF6DC" stroke="#B07C00" stroke-width="2.5"/></g>
+<circle cx="215" cy="212" r="38" fill="#ffffff" stroke="#B07C00" stroke-width="3"/>
+<rect x="189" y="194" width="52" height="36" rx="5" fill="#ffffff" stroke="#B07C00" stroke-width="3"/>
+<line x1="215" y1="194" x2="215" y2="230" stroke="#B07C00" stroke-width="3"/>
+<rect x="199" y="204" width="10" height="3" fill="#B07C00"/><rect x="221" y="204" width="10" height="3" fill="#B07C00"/>
+<rect x="199" y="211" width="10" height="3" fill="#B07C00"/><rect x="221" y="211" width="10" height="3" fill="#B07C00"/>
+<text x="215" y="278" font-size="22" font-weight="700" text-anchor="middle" fill="#B07C00">transformers</text>
+<rect x="120" y="292" width="190" height="30" rx="15" fill="#ffffff" stroke="#FFC53D" stroke-width="1.8"/>
+<text x="215" y="312" font-size="13.5" font-weight="700" text-anchor="middle" fill="#B07C00">定标准：模型长什么样</text>
+<text x="215" y="352" font-size="14.5" text-anchor="middle" fill="#555555">权重与 config 的事实标准</text>
+<text x="215" y="379" font-size="14.5" text-anchor="middle" fill="#555555">小模型上对照读代码的解剖台</text>
+<text x="215" y="406" font-size="14.5" text-anchor="middle" fill="#555555">回答：什么是“正确输出”</text>
+<g filter="url(#s1)"><rect x="390" y="135" width="320" height="255" rx="22" fill="#E9F1FF" stroke="#2F6BDF" stroke-width="2.5"/></g>
+<circle cx="550" cy="212" r="38" fill="#ffffff" stroke="#2F6BDF" stroke-width="3"/>
+<path d="M544,186 L532,218 L547,218 L542,238 L566,208 L551,208 Z" fill="#2F6BDF"/>
+<text x="550" y="278" font-size="22" font-weight="700" text-anchor="middle" fill="#2F6BDF">vLLM</text>
+<rect x="455" y="292" width="190" height="30" rx="15" fill="#ffffff" stroke="#5B8DEF" stroke-width="1.8"/>
+<text x="550" y="312" font-size="13.5" font-weight="700" text-anchor="middle" fill="#2F6BDF">主线：前 3 周全情投入</text>
+<text x="550" y="352" font-size="14.5" text-anchor="middle" fill="#555555">PagedAttention 分页 KV 管理</text>
+<text x="550" y="379" font-size="14.5" text-anchor="middle" fill="#555555">调度 · 批处理 · 前缀缓存</text>
+<text x="550" y="406" font-size="14.5" text-anchor="middle" fill="#555555">回答：怎么跑得又快又省</text>
+<g filter="url(#s1)"><rect x="725" y="135" width="320" height="255" rx="22" fill="#FFEFDD" stroke="#A84E00" stroke-width="2.5"/></g>
+<circle cx="885" cy="212" r="38" fill="#ffffff" stroke="#A84E00" stroke-width="3"/>
+<circle cx="885" cy="212" r="24" fill="#ffffff" stroke="#A84E00" stroke-width="4"/>
+<polygon points="885,198 901,228 883,222" fill="#A84E00"/>
+<circle cx="885" cy="212" r="3.5" fill="#A84E00"/>
+<text x="885" y="278" font-size="22" font-weight="700" text-anchor="middle" fill="#A84E00">SGLang</text>
+<rect x="790" y="292" width="190" height="30" rx="15" fill="#ffffff" stroke="#FFA94D" stroke-width="1.8"/>
+<text x="885" y="312" font-size="13.5" font-weight="700" text-anchor="middle" fill="#A84E00">对照：最后一周发力</text>
+<text x="885" y="352" font-size="14.5" text-anchor="middle" fill="#555555">RadixAttention 前缀树缓存</text>
+<text x="885" y="379" font-size="14.5" text-anchor="middle" fill="#555555">结构化输出 · 高效调度</text>
+<text x="885" y="406" font-size="14.5" text-anchor="middle" fill="#555555">回答：有没有更优解？</text>
+<g filter="url(#s1)"><rect x="600" y="118" width="176" height="34" rx="17" fill="#2F6BDF"/></g>
+<path d="M622,124 l5,6 -5,6 -5,-6 Z" fill="#FFD76A"/>
+<text x="640" y="140" font-size="13.5" font-weight="700" text-anchor="start" fill="#ffffff">主线 · 权重最大</text>
+<g filter="url(#s1)"><rect x="80" y="440" width="210" height="66" rx="14" fill="#ffffff" stroke="#B07C00" stroke-width="2"/></g>
+<text x="185" y="468" font-size="16" font-weight="700" text-anchor="middle" fill="#B07C00">transformers</text>
+<text x="185" y="491" font-size="12.5" text-anchor="middle" fill="#777777">定义计算图（标准答案）</text>
+<line x1="300" y1="473" x2="352" y2="473" stroke="#C9BFAF" stroke-width="3.5" marker-end="url(#a1)"/>
+<g filter="url(#s1)"><rect x="362" y="428" width="420" height="90" rx="16" fill="#FFFDF7" stroke="#C9BFAF" stroke-width="2" stroke-dasharray="7 5"/></g>
+<text x="572" y="464" font-size="17" font-weight="700" text-anchor="middle" fill="#444444">高性能重实现 · 谁更快更省？</text>
+<text x="572" y="492" font-size="13.5" text-anchor="middle" fill="#777777">vLLM（蓝队）vs SGLang（橙队）</text>
+<line x1="792" y1="473" x2="844" y2="473" stroke="#C9BFAF" stroke-width="3.5" marker-end="url(#a1)"/>
+<circle cx="884" cy="473" r="27" fill="#ffffff" stroke="#FF6B6B" stroke-width="4.5"/>
+<circle cx="884" cy="473" r="11" fill="#FF6B6B"/>
+<text x="924" y="469" font-size="15" font-weight="700" text-anchor="start" fill="#444444">又准又快</text>
+<text x="924" y="489" font-size="12.5" text-anchor="start" fill="#888888">是学习的目标</text>
+<text x="550" y="552" font-size="13.5" text-anchor="middle" fill="#8a8a8a">学习策略：以 transformers 为标准答案，把 vLLM / SGLang 的实现逐行读透</text>
+</svg>

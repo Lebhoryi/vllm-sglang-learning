@@ -1,0 +1,30 @@
+# ===== 日志（不入 git）=====
+logs/
+*.log
+
+# ===== 模型权重（本体在 49.147 本地盘 /data/hf_models，勿入 git）=====
+models/
+
+# ===== vim 交换文件 =====
+*.swp
+*~
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
+
+# ===== 大文件 / 压缩包 =====
+*.zip
+*.tar.gz
+*.bin
+
+# ===== 临时 / 产物 =====
+tmp/
+*.tmp
