@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "scripts/ 实验脚本生命周期",
+    "subtitle": "加载配置 → 核查环境 → 下载模型 → 启动服务 → 冒烟/基准 → 终止（真实代码：set_env.sh 为配置中心，全部脚本自动 source）",
+    "output": "docs/生命周期-scripts.html",
+    "viewBox": [980, 660],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "main-rail", "label": "启停主链路", "focus": ["load_env", "env_check", "download", "start_gate", "serving", "stop"], "note": "从 set_env.sh 到服务退出的完整脚本链路。" },
+      { "id": "serve-ops", "label": "服务态操作", "focus": ["serving", "smoke", "bench"], "note": "服务运行中的冒烟测试与 27B 基准。" },
+      { "id": "recovery", "label": "失败与恢复", "focus": ["start_gate", "missing", "download", "serving"], "note": "模型目录缺失时 exit 1，补下载后重试启动。" }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "启停主链路" },
+    { "id": "serve", "label": "服务态操作" },
+    { "id": "recovery", "label": "失败恢复" },
+    { "id": "terminal", "label": "终止" }
+  ],
+  "states": [
+    { "id": "load_env", "type": "start", "label": "set_env.sh", "sublabel": "配置中心：模型/端口/IP", "lane": "main", "col": 0, "step": "01", "tag": "入口" },
+    { "id": "env_check", "type": "active", "label": "env_check.sh", "sublabel": "版本 + GPU 核查（可跳过）", "lane": "main", "col": 1, "step": "02", "tag": "核查" },
+    { "id": "download", "type": "active", "label": "download_models.sh", "sublabel": "hf-mirror → MODEL_DIR", "lane": "main", "col": 2, "step": "03", "tag": "准备" },
+    { "id": "start_gate", "type": "decision", "label": "start_*.sh 启动", "sublabel": "模型目录存在？", "lane": "main", "col": 3, "step": "04", "tag": "gate" },
+    { "id": "serving", "type": "waiting", "label": "服务运行中", "sublabel": "8001/8002/8003/30000 监听", "lane": "main", "col": 4, "step": "05", "tag": "serving" },
+    { "id": "missing", "type": "failure", "label": "模型目录缺失", "sublabel": "exit 1 → 提示先下载", "lane": "recovery", "col": 0, "tag": "retryable" },
+    { "id": "smoke", "type": "active", "label": "test_chat.sh 冒烟", "sublabel": "POST /v1/chat/completions", "lane": "serve", "col": 1, "tag": "验证" },
+    { "id": "bench", "type": "active", "label": "bench 27B 基线", "sublabel": "vllm bench serve · 200 prompts", "lane": "serve", "col": 2, "tag": "压测" },
+    { "id": "stop", "type": "neutral", "label": "Ctrl+C 终止", "sublabel": "日志/结果落 logs/", "lane": "terminal", "col": 0, "tag": "terminal" }
+  ],
+  "transitions": [
+    { "id": "t5", "from": "start_gate", "to": "missing", "label": "目录不存在", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "drop", "channelY": 245 },
+    { "id": "t6", "from": "missing", "to": "download", "label": "修复：补下载", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [390, 210] },
+    { "id": "t7", "from": "serving", "to": "smoke", "label": "冒烟验证", "route": "drop" },
+    { "id": "t9", "from": "serving", "to": "bench", "label": "27B 压测", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [710, 235] },
+    { "id": "t11", "from": "serving", "to": "stop", "label": "Ctrl+C", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "via": [[790, 188], [790, 430], [402, 430]], "labelAt": [790, 350] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "启停主链路",
+      "items": [
+        "set_env.sh 被其余脚本自动 source，集中管理模型路径/端口/服务器 IP",
+        "四个 start_*.sh 对应四个服务：vLLM 0.8B(8001) / 27B(8002) / 0.5B(8003) / SGLang 0.8B(30000)",
+        "启动先检查模型目录，所有日志 tee 到 logs/"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "服务态操作",
+      "items": [
+        "test_chat.sh 冒烟：OpenAI 兼容端点，vLLM/SGLang 通用",
+        "bench_qwen38_27b.sh 前置是 27B 服务已起（v0.28 新 CLI：vllm bench serve）",
+        "服务态可反复冒烟/压测，不退出即停留在运行中"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "失败与终止",
+      "items": [
+        "模型目录不存在 → exit 1 并提示先跑 download_models.sh",
+        "补下载后可重新走启动 gate，失败可恢复",
+        "Ctrl+C 终止：服务日志与 --save-result 基准 json 均留在 logs/"
+      ]
+    }
+  ]
+}

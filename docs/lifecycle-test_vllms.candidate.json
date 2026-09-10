@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "test_vllms/ 离线推理生命周期",
+    "subtitle": "W1 冻结证据：LLM() 初始化 → 权重加载 → 编译预热 → KV cache 就绪 → generate → 清理退出（0.8B 与 27B 双日志实测）",
+    "output": "docs/生命周期-test_vllms.html",
+    "viewBox": [980, 700],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "main-rail", "label": "离线推理链路", "focus": ["entry", "init", "load", "compile", "kv_alloc", "generate", "output", "exit"], "note": "从入口到 EngineCore 清理的完整离线推理过程。" },
+      { "id": "memory-story", "label": "显存与 KV 账", "focus": ["load", "compile", "kv_alloc", "generate"], "note": "两模型的 KV cache 容量对比，解释限参必要性。" },
+      { "id": "failure-exit", "label": "失败与退出", "focus": ["entry", "init", "bad_input", "exit"], "note": "环境变量或路径错误导致启动失败，修正后重跑。" }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "离线推理主链路" },
+    { "id": "memory", "label": "显存事件" },
+    { "id": "recovery", "label": "失败恢复" },
+    { "id": "terminal", "label": "终止" }
+  ],
+  "states": [
+    { "id": "entry", "type": "start", "label": "运行入口", "sublabel": "python test_vllm_qwen*.py", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "init", "type": "active", "label": "LLM() 初始化", "sublabel": "Qwen3_5ForConditionalGeneration", "lane": "main", "col": 1, "step": "02", "tag": "engine" },
+    { "id": "load", "type": "active", "label": "权重加载", "sublabel": "0.8B 1.72GiB · 27B 51.1GiB", "lane": "main", "col": 2, "step": "03", "tag": "weights" },
+    { "id": "compile", "type": "active", "label": "编译与预热", "sublabel": "torch.compile + warmup 86s", "lane": "main", "col": 3, "step": "04", "tag": "warmup" },
+    { "id": "generate", "type": "active", "label": "llm.generate()", "sublabel": "2 prompts · temp 0.7 · max 64", "lane": "main", "col": 4, "step": "05", "tag": "推理" },
+    { "id": "kv_alloc", "type": "waiting", "label": "KV cache 就绪", "sublabel": "0.8B 67.08GiB | 27B 18.61GiB", "lane": "memory", "col": 0, "tag": "显存" },
+    { "id": "bad_input", "type": "failure", "label": "启动失败", "sublabel": "MODEL_PATH 缺失 / 路径错", "lane": "recovery", "col": 1, "yOffset": 90, "tag": "retryable" },
+    { "id": "output", "type": "success", "label": "输出结果", "sublabel": "打印 generated text", "lane": "terminal", "col": 1, "tag": "结果" },
+    { "id": "exit", "type": "neutral", "label": "正常退出", "sublabel": "EngineCore SIGTERM 清理", "lane": "terminal", "col": 2, "tag": "terminal" }
+  ],
+  "transitions": [
+    { "id": "t4", "from": "compile", "to": "kv_alloc", "label": "graph capture 4-11s", "fromSide": "bottom", "toSide": "top", "route": "drop", "channelY": 220 },
+    { "id": "t5", "from": "kv_alloc", "to": "generate", "fromSide": "top", "toSide": "bottom", "route": "drop", "channelY": 245 },
+    { "id": "t6", "from": "generate", "to": "output", "label": "2/2 prompts 完成", "fromSide": "bottom", "toSide": "top", "via": [[710, 435], [556, 435]], "labelAt": [633, 440] },
+    { "id": "t7", "from": "output", "to": "exit" },
+    { "id": "t8", "from": "init", "to": "bad_input", "label": "键缺失 / 路径错", "variant": "security", "fromSide": "bottom", "toSide": "top", "via": [[248, 340], [556, 340]], "labelAt": [402, 358] },
+    { "id": "t9", "from": "bad_input", "to": "entry", "label": "修正后重跑", "variant": "emphasis", "fromSide": "left", "toSide": "bottom", "via": [[493, 397], [94, 397]] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "离线推理链路",
+      "items": [
+        "LLM() → 权重加载 → 编译预热 → KV 就绪 → generate 的顺序由双日志实测确认",
+        "0.8B 与 27B 共用同一入口脚本，模型靠 MODEL_PATH 环境变量切换",
+        "test_vllms/ 已冻结为 W1 离线 API 证据，不再新增"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "显存放大镜",
+      "items": [
+        "KV cache：0.8B 占 67.08 GiB（22.08x@262K）vs 27B 仅 18.61 GiB（1.14x）",
+        "27B 权重吃掉 51.1 GiB，262K 上下文并发只剩 1.14x → 限 max-model-len 必要性实锤",
+        "金矿：attention block 784 tokens 与 mamba page 对齐（混合注意力特例）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "失败与退出",
+      "items": [
+        "MODEL_PATH 未设置触发 KeyError，路径错误导致加载失败",
+        "启动失败可修正后重跑，属于可恢复错误",
+        "正常退出时 EngineCore 收到 SIGTERM，先完成请求再清理资源"
+      ]
+    }
+  ]
+}

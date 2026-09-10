@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "test_chat.sh 对话冒烟测试",
+    "subtitle": "OpenAI 兼容请求：解析参数 → 构造/发送 curl → vLLM 推理 → 返回并美化输出",
+    "output": "docs/流程-test_chat.html",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "request-path", "label": "请求链路", "focus": ["parse", "build", "send", "process", "format"], "note": "从客户端拼参数到服务端推理并返回。" },
+      { "id": "server-response", "label": "服务端处理", "focus": ["send", "process", "format"], "note": "vLLM 收到请求做推理并返回 JSON。" }
+    ]
+  },
+  "lanes": [
+    { "id": "client", "label": "客户端 test_chat.sh" },
+    { "id": "server", "label": "vLLM 服务端" }
+  ],
+  "phases": [
+    { "id": "build", "label": "构造请求", "fromCol": 0, "toCol": 2 },
+    { "id": "infer", "label": "服务端推理", "fromCol": 3, "toCol": 3, "variant": "emphasis" },
+    { "id": "return", "label": "返回", "fromCol": 5, "toCol": 5 }
+  ],
+  "mainPath": ["parse", "build", "send", "process", "format"],
+  "nodes": [
+    { "id": "parse", "lane": "client", "col": 0, "type": "frontend", "label": "解析参数", "sublabel": "PORT=8001", "tag": "入口" },
+    { "id": "build", "lane": "client", "col": 2, "type": "frontend", "label": "构造请求", "sublabel": "POST /v1/chat", "tag": "OpenAI 格式" },
+    { "id": "send", "lane": "client", "col": 3, "type": "backend", "label": "curl 发送", "sublabel": "max_tokens 128", "tag": "HTTP" },
+    { "id": "process", "lane": "server", "col": 3, "type": "backend", "label": "vLLM 推理", "sublabel": "chat completions", "tag": "推理" },
+    { "id": "format", "lane": "client", "col": 5, "type": "external", "label": "返回并美化", "sublabel": "json.tool · 中文", "tag": "完成" }
+  ],
+  "edges": [
+    { "from": "parse", "to": "build" },
+    { "from": "build", "to": "send" },
+    { "from": "send", "to": "process", "label": "HTTP POST", "variant": "emphasis", "route": "drop", "fromSide": "bottom", "toSide": "top", "labelAt": [430, 167] },
+    { "from": "process", "to": "format", "label": "响应 JSON", "route": "drop", "fromSide": "right", "toSide": "left", "labelAt": [620, 190] }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "一次冒烟", "items": ["model 字段须与 start 服务一致","POST /v1/chat/completions 为 OpenAI 兼容","json.tool --no-ensure-ascii 中文正常"] },
+    { "dot": "amber", "title": "服务端配合", "items": ["vLLM/SGLang 都兼容同一 curl","返回含 finish_reason 与 usage","需先起服务才收到响应"] },
+    { "dot": "cyan", "title": "参数速查", "items": ["positional: PORT·MODEL·PROMPT","PROMPT 默认\"你好\",max_tokens 128","响应经 json.tool 美化输出"] }
+  ]
+}
