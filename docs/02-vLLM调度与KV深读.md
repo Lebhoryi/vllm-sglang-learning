@@ -145,6 +145,14 @@ KV_bytes/token = Σ_层 (kv_heads × head_dim × dtype_bytes)  ×（该层是否
 
 **和你日志的对应**：prefix caching 默认开 → mamba_cache_mode 默认走 **align** → 需要 attention page 与 mamba page 对齐 → 于是 `Setting attention block size to 784 tokens`（interface.py:911/935）。两个默认配置的交互，就是你日志里那行日志的完整因果链。
 
+> **0.29.0 追加修复（2026-09-11 核实，全部不在 0.28.0）**：
+> - `#55760` / `#55861`：Mamba/hybrid + EAGLE 的 `prefix_cache_retention_interval` 未设置时默认 **dense**（0.28.x 默认仅语义 checkpoint）→ 0.29.0 起 0.8B/27B 的 prefix cache 命中行为/显存占用可能微变
+> - `#54044`：mamba align metadata 在 profiling teardown 时重置（修 stale 缓存）
+> - `#52743`：GDN decode 的 Ampere preprocessor guard 修复——**A100 (sm_80) 直接受益**，0.28.0 无此修复
+> - `#53663` / `#51358`：Mooncake mamba boundary state 修复（同 #43559 主题，暂不涉及）
+> - 依赖连带：flashinfer-python 0.6.16 → **0.6.18**（0.29.0 硬依赖）；torch 2.13.0、transformers 5.16.1 均满足
+> - `vllm bench serve` / serve CLI **无破坏性变更**（Rust bench 仅 flag parity 对齐）→ 9/21 脚本直接可用
+
 ### 附录 B2：Qwen3.8-27B 结构档案（对照用，config.json 实测同日）
 
 | 维度 | 0.8B | 27B |
