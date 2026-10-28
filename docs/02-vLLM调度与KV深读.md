@@ -29,6 +29,10 @@
 
 1. `scheduler.step()` 的输入输出是什么？一次 step 里发生了什么？
 2. preemption 在什么条件下触发？swap 与 recompute 怎么选？
+   > **2026-10-01 修正**：V1 里**没有 swap**（V0 的 `vllm/core/scheduler.py` 已随 V1 重构删除，
+   > `grep -rn "swap" vllm/v1/core/sched/` 为空），抢占只有 recompute 一种
+   > —— `_preempt_request()` 把 `num_computed_tokens` 归零并释放全部 KV block。
+   > 动画验证见 `docs/sched-anim.html` 场景③④，说明见 `docs/12-调度器逐行动画使用说明.md`。
 3. chunked prefill 的 chunk 大小由谁定？默认开还是关？（`config/scheduler.py` 找）
 4. prefix caching 命中判定在哪？（`config/cache.py` 参数 + scheduler 对应逻辑）
 
@@ -128,6 +132,141 @@ KV_bytes/token = Σ_层 (kv_heads × head_dim × dtype_bytes)  ×（该层是否
 - Q3：27B 的 65.5 KB/token ≈ 0.8B 的 5.3 倍——27B 是 64 层（0.8B 的 2.67 倍）……差的另外 2 倍从哪来？（head_dim？KV 头数？等 27B config.json 到手核对）
 
 > 把这 3 问算通 = 专题 2 过关。「算出来的数对不上日志」正是你该追的线索，不是 bug。
+
+---
+
+## 附录 B3 ★ 矛盾解答（2026-09-28 v0.30.0 实测，两组数据交叉验证）
+
+> **结论先行：Q1 的"剩下一半"不存在；"12.4 KB/token"这个量本身就不是常数，它随 `max_model_len` 变。** 下面是从两组实测数据 + 源码推出来的完整机制。
+
+### 一、新数据：同一模型、同 block_size，两组不同结果
+
+| 场景 | 启动参数 | `Available KV cache memory` | `GPU KV cache size` | 每 token |
+|---|---|---|---|---|
+| A 离线 | 全默认（`gpu-memory-utilization=0.92`） | 66.86 GiB | 5,768,779 | **12.45 KB** |
+| B serve | `--gpu-memory-utilization 0.85 --max-model-len 8192 --max-num-seqs 32` | 61.76 GiB | 3,693,847 | **17.95 KB** |
+
+**同一模型、同一 `block_size=544`，每 token 开销差 44%。** 这直接说明"KB/token"不是模型固有常数。
+
+### 二、Q1 解答：没有"剩下一半"，是当初少乘了 K 和 V
+
+原估算写的是 `2 × 256 × 2B × 6 = 6 KB/token`——**漏了 K/V 两份**。正确算式：
+
+```
+full attention 层：6 层 × 2 KV头 × 256 head_dim × 2B(bf16) × 2(K和V) = 12,288 B/token = 12.00 KB
+实测场景 A：                                                        12,445 B/token = 12.15 KB
+```
+
+**吻合度 98.7%。** 12 KB 一点都不神秘，就是 6 层 full attention 的 K/V，线性层贡献接近零。
+
+### 三、★★ 真正的机制：mamba page 被 padding 成与 attention page 完全相等
+
+源码 `vllm/platforms/interface.py:968-1000`：
+
+```python
+if cache_config.mamba_cache_mode == "align":
+    cache_config.mamba_block_size = cache_config.block_size   # mamba 也用 544
+
+# Pad mamba page size to exactly match attention page size
+attn_page_size = cache_config.block_size * attn_page_size_1_token
+...
+cache_config.mamba_page_size_padded = attn_page_size          # ← 强行补到相等
+```
+
+配合日志那行 `Padding mamba page size by 2.64% to ensure that mamba page size and attention page size are exactly equal.`
+
+算出 0.8B 的 page 大小：
+
+```
+attention page = 544 token × 12,288 B/token = 6.3750 MB
+mamba page     = 6.3750 MB   ← padding 后强制相等
+```
+
+### 四、★★ 关键：`GPU KV cache size` 不是物理容量，是"并发数 × max_model_len"
+
+源码 `vllm/v1/core/kv_cache_utils.py:2412-2431`：
+
+```python
+def get_kv_cache_capacity(vllm_config, kv_cache_config):
+    max_model_len = vllm_config.model_config.max_model_len
+    max_concurrency = get_max_concurrency_for_kv_cache_config(vllm_config, kv_cache_config)
+    return int(max_concurrency * max_model_len), max_concurrency   # ← token数 = 并发 × max_len
+```
+
+验证：
+
+| 场景 | 并发 | `max_model_len` | 乘积 | 日志 |
+|---|---|---|---|---|
+| A | 22.01 | 262,144 | 5,769,789 | 5,768,779 ✓ |
+| B | 450.91 | 8,192 | 3,693,855 | 3,693,847 ✓ |
+
+**所以拿它除以总显存算"每 token 字节"是错的口径**——两个场景的 `max_model_len` 不同，商自然不同。
+
+### 五、正确的推导链（场景 A 复现成功）
+
+```
+1) bytes_per_block = attention page = 544 × 12,288 B = 6.3750 MB
+   （4 个 group 共享同一 block 索引池，取 max 而非 sum）
+
+2) num_blocks = floor(66.86 GiB / 6.3750 MB) = 10,739
+
+3) blocks_per_request：
+     attention = cdiv(262144, 544) = 482
+     mamba     = 2                ← ★ align 模式固定 2 个，不随序列长度增长
+     合计 = 484
+
+4) concurrency = 10739 / 484 = 22.19    （日志 22.01，偏差 0.8%）
+5) token 容量 = 22.19 × 262144 = 5,816,455   （日志 5,768,779，偏差 0.8%）
+```
+
+★ **mamba 只占固定 2 个 block** —— 源码 `vllm/v1/kv_cache_interface.py:1061-1064`：
+
+```python
+elif vllm_config.cache_config.mamba_cache_mode == "align":
+    return self.page_size_bytes * (2 + self.num_speculative_blocks
+                                     + self.num_prefill_checkpoint_blocks)
+```
+
+**这就是混合注意力"省 KV"的本质**：线性层状态是 O(1) 常数，不随 token 增长。18 个 GDN 层（conv state 1.125 MB + ssm state 18 MB = 19.12 MB）**无论序列多长都只占 2 个 page**。
+
+### 六、对 Q3 的修正
+
+附录 B2 里那个"5.33 vs 5.28 几乎一致"的巧合**依然成立**，但理由要说清：因为**线性层贡献接近零**，27B/0.8B 的比值完全由 full attention 层决定：
+
+```
+0.8B：GQA 2头 × 256 × 2B × 2 × 6 层  = 12,288 B/token
+27B： GQA 4头 × 256 × 2B × 2 × 16 层 = 65,536 B/token
+比值 = 65,536 / 12,288 = 5.333
+```
+
+而且 **27B 的"65.5 KB/token"同样要按第四节的正确口径重算**——它是 27B 在自己的 `max_model_len` 下算出来的，不是可直接比较的物理量。
+
+### 七、结论速查
+
+| 问题 | 答案 |
+|---|---|
+| Q1「剩下一半是什么」 | **不存在**，原式漏乘 K/V 两份；12 KB 就是 6 层 full attention |
+| Q2「544 意味着什么」 | mamba page 被 **padding 到与 attention page 相等**（6.375 MB）；align 模式下 mamba **固定占 2 个 block**，与序列长度无关 |
+| Q3「27B 的 5.3 倍」 | 由 full attention 层数×头数决定，比值 5.33 精确成立；线性层贡献≈0 |
+| 「12.4 vs 17.5」 | **口径误解**：`GPU KV cache size` = 并发 × `max_model_len`，不是物理容量 |
+
+### 八、验证路径（自己动手）
+
+```bash
+# 1. 换 max_model_len 重跑，观察 concurrency 反向变化
+#    预期：max_model_len 减半 → concurrency 约翻倍 → token 容量约不变
+vllm serve /data/hf_models/Qwen3.5-0.8B --max-model-len 4096 --gpu-memory-utilization 0.92
+
+# 2. 加 --calculate-kv-scales / 用固定显存对比：
+#    加 --kv-cache-memory=<字节数>（日志会提示推荐值），固定显存后换 max_model_len
+#    预期：num_blocks 完全不变，concurrency 随 max_len 反比变
+
+# 3. 源码锚点
+#    vllm/platforms/interface.py:968-1000        mamba page padding 逻辑
+#    vllm/v1/kv_cache_interface.py:1061-1064     align 模式固定 2 block
+#    vllm/v1/core/kv_cache_utils.py:2412-2431    token 容量 = 并发 × max_len
+#    vllm/v1/core/kv_cache_utils.py:1591-1610    bytes_per_block 取 max
+```
 
 ## 附录 C：混合注意力 serving 专属 flag（2026-09-08 源码核实）
 
