@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vLLM v0.28.0 起 Qwen2.5-0.5B-Instruct（标准注意力对照模型，默认端口 8003）
+# vLLM v0.30.0 起 Qwen2.5-0.5B-Instruct（标准注意力对照模型，默认端口 8003）
 # 用法: MODEL_PATH=/path PORT=8003 ./start_vllm_qwen25_05b.sh
 set -euo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

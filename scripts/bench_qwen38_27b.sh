@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vLLM v0.28 benchmark：vllm bench serve（旧 python -m vllm.benchmarks.benchmark_serving 已废弃）
+# vLLM v0.30.0 benchmark：vllm bench serve（旧 python -m vllm.benchmarks.benchmark_serving 已废弃）
 # 前置：27B 服务已起（start_vllm_qwen38_27b.sh，默认 8002，用 PORT 对齐）
 # 用法: PORT=8002 NUMPROMPTS=200 ./bench_qwen38_27b.sh
 set -euo pipefail

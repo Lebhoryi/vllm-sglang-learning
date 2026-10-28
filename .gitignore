@@ -1,6 +1,6 @@
 # ===== 日志（不入 git）=====
-logs/
-*.log
+# logs/
+# *.log
 
 # ===== 模型权重（本体在 49.147 本地盘 /data/hf_models，勿入 git）=====
 models/
@@ -28,3 +28,12 @@ Thumbs.db
 # ===== 临时 / 产物 =====
 tmp/
 *.tmp
+# ===== drawio 导出临时 HOME（snap 在沙箱内需要可写 HOME/XDG）=====
+tmp-drawio/
+
+# ===== pi-ai 升级验证临时树 =====
+tmp-piai/
+.npm-tmp/
+.dsh
+.scratch
+.logs

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vLLM v0.28.0 起 Qwen3.5-0.8B（默认端口 8001）
+# vLLM v0.30.0 起 Qwen3.5-0.8B（默认端口 8001）
 # 用法: MODEL_PATH=/path/to/model PORT=8001 ./start_vllm_qwen35_08b.sh
 set -euo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

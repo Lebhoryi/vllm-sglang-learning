@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# vLLM v0.28.0 起 Qwen3.8-27B HTTP 服务（默认端口 8002，限参配置内置）
+# vLLM v0.30.0 起 Qwen3.8-27B HTTP 服务（默认端口 8002，限参配置内置）
 # 用法: MODEL_PATH=/path PORT=8002 ./start_vllm_qwen38_27b.sh
 set -euo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
