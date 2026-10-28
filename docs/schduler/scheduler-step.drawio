@@ -1,0 +1,115 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="vllm 一次调度" id="vllm-scheduler-step">
+    <mxGraphModel dx="1240" dy="1000" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="1960" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="c101" value="vLLM V1 一次调度：一个 EngineCore.step() 做了什么" style="text;html=1;fontSize=27;fontStyle=1;fontColor=#1F4E79;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="30" width="1120" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c102" value="口径：vllm/v1/core/sched/scheduler.py + vllm/v1/engine/core.py（main 00b7847c80）" style="text;html=1;fontSize=14;fontColor=#777777;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="78" width="1120" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="c103" value="① 接收请求&lt;br&gt;add_request() → 进 waiting 队列，记录 prompt / 生成状态" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFFFFF;strokeColor=#1E1E1E;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="140" width="520" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="c104" value="每步开始时检查 has_requests()&lt;br&gt;没有则这一步直接返回（不跑模型）" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontColor=#777777;" vertex="1" parent="1">
+          <mxGeometry x="844" y="152" width="300" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="c105" value="② 本轮初始化（只此一次）&lt;br&gt;token_budget = max_num_batched_tokens；input_budget 同理" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF6E5;strokeColor=#F39C12;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="290" width="520" height="84" as="geometry"/>
+        </mxCell>
+        <mxCell id="c106" value="预算不是独立一步算出来的：&lt;br&gt;从这里开始，每调度一个请求就扣一次" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontColor=#8A6D1B;" vertex="1" parent="1">
+          <mxGeometry x="844" y="300" width="320" height="84" as="geometry"/>
+        </mxCell>
+        <mxCell id="c107" value="Scheduler.schedule()" style="rounded=1;arcSize=6;html=1;fillColor=none;strokeColor=#2E6FDA;strokeWidth=2;verticalAlign=top;align=left;fontSize=16;fontColor=#2E6FDA;fontStyle=1;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="525" width="1120" height="950" as="geometry"/>
+        </mxCell>
+        <mxCell id="c108" value="③ 先调度 RUNNING 请求&lt;br&gt;本步要算的 token = tokens_with_spec + placeholders − computed" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#F2F7FF;strokeColor=#2E6FDA;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="580" width="520" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c109" value="再用 token 预算 /&lt;br&gt;input 预算 / max_model_len&lt;br&gt;三者取 min（chunked&lt;br&gt;prefill 就是这里裁出来的）" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontColor=#4A5A6E;" vertex="1" parent="1">
+          <mxGeometry x="80" y="580" width="210" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c110" value="④ allocate_slots()：给这批 token 分配 KV block&lt;br&gt;拿不到 block 怎么办？" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF0EA;strokeColor=#E53935;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="730" width="520" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c111" value="显存是硬约束——token 预算还剩很多也可能卡在这里" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontColor=#9B2C2C;" vertex="1" parent="1">
+          <mxGeometry x="844" y="730" width="340" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c112" value="" style="rounded=1;arcSize=6;html=1;fillColor=none;strokeColor=#E53935;strokeWidth=2;dashed=1;dashPattern=8 5;verticalAlign=top;align=left;fontSize=16;fontColor=#E53935;fontStyle=1;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="380" y="865" width="700" height="236" as="geometry"/>
+        </mxCell>
+        <mxCell id="c113" value="抢占 preemption" style="text;html=1;fontSize=15;fontStyle=1;fontColor=#E53935;" vertex="1" parent="1">
+          <mxGeometry x="396" y="870" width="220" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="c114" value="从 running 尾部踢出一个请求&lt;br&gt;放回 waiting，释放它的 KV block" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=1.5;fillColor=#FFFFFF;strokeColor=#7B8794;fontSize=15;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="410" y="910" width="330" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="c115" value="重新 allocate_slots()&lt;br&gt;成功 → 继续；还是不行 → 再踢一个" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=1.5;fillColor=#FFFFFF;strokeColor=#7B8794;fontSize=15;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="410" y="994" width="330" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="c116" value="_preempt_request()&lt;br&gt;num_preemptions += 1&lt;br&gt;block 归还池子" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=1.5;fillColor=#FFFFFF;strokeColor=#7B8794;fontSize=15;fontColor=#333333;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="780" y="910" width="280" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="c117" value="下轮重新进 schedule()：&lt;br&gt;前缀命中 → 只补增量&lt;br&gt;未命中 → 整段重算" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=1.5;fillColor=#FFFFFF;strokeColor=#7B8794;fontSize=15;fontColor=#333333;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="780" y="994" width="280" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="c118" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#E53935;strokeWidth=1.8;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c114" target="c115">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c119" value="⑤ 本轮没有发生抢占，才调度 WAITING 请求&lt;br&gt;（有抢占就整段跳过，防止刚腾的空间被抢回去）" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#DFF0D8;strokeColor=#7CB342;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1145" width="520" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c120" value="⑥ 打包 SchedulerOutput&lt;br&gt;num_scheduled_tokens / 各请求 block 表 / spec tokens" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFFFFF;strokeColor=#1E1E1E;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1295" width="520" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c121" value="preempted_req_ids、finished_req_ids&lt;br&gt;也作为字段一起交给 worker" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontColor=#4A5A6E;" vertex="1" parent="1">
+          <mxGeometry x="844" y="1300" width="340" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="c122" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c103" target="c105">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c123" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c105" target="c108">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c124" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c108" target="c110">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c125" value="失败" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#E53935;strokeWidth=1.8;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c110" target="c112">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c126" value="成功" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#7CB342;strokeWidth=1.8;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c112" target="c119">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c127" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c119" target="c120">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c128" value="⑦ GPU 执行模型计算&lt;br&gt;execute_model(SchedulerOutput)" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=3;fillColor=#DFF0D8;strokeColor=#7CB342;fontSize=21;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1555" width="520" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="c129" value="交给 worker" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c120" target="c128">
+          <mxGeometry x="0.35" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c130" value="⑧ update_from_output()：追加 token / 判停止&lt;br&gt;完成 → 释放 KV 与 encoder cache；未完成 → 留在 running" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#F6EFFA;strokeColor=#8E44AD;fontSize=19;fontStyle=1;fontColor=#1E1E1E;verticalAlign=middle;align=center;spacingLeft=10;spacingRight=10;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1705" width="520" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c131" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=14;fontColor=#555555;labelBackgroundColor=#FFFFFF;strokeColor=#1E1E1E;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="c128" target="c130">
+          <mxGeometry x="0.5" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c132" value="下一轮 step：回到 ③（循环直到所有请求完成）" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2E6FDA;strokeWidth=2;dashed=1;dashPattern=8 5;endArrow=block;endFill=1;fontSize=15;fontColor=#2E6FDA;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c130" target="c108">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1140" y="1755"/><mxPoint x="1140" y="630"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="c133" value="" style="rounded=1;arcSize=6;html=1;fillColor=none;strokeColor=#1E1E1E;strokeWidth=2;dashed=1;dashPattern=8 5;verticalAlign=top;align=left;fontSize=16;fontColor=#1E1E1E;fontStyle=1;spacingLeft=14;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="415" width="1120" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="c134" value="这条链的本质 —— 调度器只做一件事：给「已算 token 数落后」的请求补预算，让 num_computed_tokens 追上 num_tokens_with_spec。&lt;br&gt;没有 prefill / decode 的分支判断（「在 prefill」只是差很多 token，「在 decode」只是差 1 个）；两个约束是 token 预算（能算多少）与 KV 显存（能放多少）。" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=15;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="78" y="424" width="1086" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="c135" value="读图注意：预算（②）不是独立一步，是边调度边扣；绿色高亮框（⑦）在调度器之外——调度器从不碰 GPU，只产出计划。" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFBE6;strokeColor=#CFC286;fontColor=#5C4B00;fontSize=15;align=left;verticalAlign=middle;spacingLeft=16;spacingRight=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1820" width="900" height="110" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

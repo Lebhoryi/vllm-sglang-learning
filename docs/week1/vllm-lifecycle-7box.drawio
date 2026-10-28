@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="vllm 请求生命周期 · 7 盒" id="vllm-lifecycle-7box">
+    <mxGraphModel dx="1400" dy="1200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="1900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="t1" value="vLLM 一次请求的生命周期（7 盒 · 草图）" style="text;html=1;fontSize=26;fontStyle=1;fontColor=#1F4E79;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="24" width="1000" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="t2" value="口径：v0.30.1rc0-60-g00b7847c80 ｜ 一次请求只跨 2 个进程 ｜ 循环体在 EngineCore 的 step()（④⑤⑥ 每圈，⑦ 每圈吐 SSE）" style="text;html=1;fontSize=12;fontColor=#666666;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="42" y="64" width="1200" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1" value="① API 层&lt;br&gt;&lt;br&gt;FastAPI 路由 → OpenAIServingChat.create_chat_completion&lt;br&gt;→ engine_client.generate(prompt, sampling_params)&lt;br&gt;&lt;br&gt;进程 A · APIServer（uvicorn 事件循环）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2FB;strokeColor=#2E6FDA;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#12395B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="120" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n1" value="干什么：收 HTTP、解析请求体、把流式结果写回 SSE&lt;br&gt;关键符号：OpenAIServingChat / GenerateBaseServing&lt;br&gt;循环体：否（但每条 SSE chunk 都要经过这里）" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="120" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s2" value="② AsyncLLM（引擎门面，仍在进程 A）&lt;br&gt;&lt;br&gt;generate → add_request → InputProcessor.process_inputs&lt;br&gt;★「文本」变「token id」就在这一站（renderer 渲 chat 模板 + tokenize）&lt;br&gt;→ output_processor.add_request 登记 → engine_core.add_request_async → zmq" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2FB;strokeColor=#2E6FDA;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#12395B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="310" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2" value="干什么：文本→token id；登记请求；最后把 token id 翻回文本&lt;br&gt;关键符号：InputProcessor.process_inputs / OutputProcessor&lt;br&gt;注意：EngineCore 收到时已是 EngineCoreRequest（token id 数组），不再见文本" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="310" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s3" value="③ 收件 / 排队（进程 B：EngineCore）&lt;br&gt;&lt;br&gt;process_input_sockets（zmq.DEALER）→ input_queue&lt;br&gt;run_busy_loop → _process_input_queue → _handle_client_request(ADD)&lt;br&gt;→ preprocess_add_request → scheduler.add_request → 落进 waiting 队列" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3EEF9;strokeColor=#8E44AD;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#4A2A6B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="560" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3" value="进程内线程：主线程 run_busy_loop + 输入 IO 线程 + 输出 IO 线程&lt;br&gt;关键符号：process_input_sockets / _process_input_queue&lt;br&gt;循环体：否（只在有新请求时走一趟）" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="560" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s4" value="④ Scheduler　★ KV 分配站（循环体第一站）&lt;br&gt;&lt;br&gt;schedule()：waiting → running（chunked prefill 按 token 预算切片）&lt;br&gt;先 get_computed_blocks 吃前缀命中（白拿 KV），再 allocate_slots 要物理 block&lt;br&gt;要不到 → 抢占 preempted_reqs / 回 waiting → SchedulerOutput" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3EEF9;strokeColor=#C0392B;strokeWidth=3;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#4A2A6B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="790" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n4" value="干什么：选本圈跑哪些 req、每个 req 跑几个 token、KV 从哪来&lt;br&gt;关键符号：Scheduler.schedule / KVCacheManager.get_computed_blocks+allocate_slots&lt;br&gt;循环体：是 —— 每圈都重新分一次" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="790" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s5" value="⑤ Model Runner（循环体第二站）&lt;br&gt;&lt;br&gt;executor.execute_model(scheduler_output) → Worker → GPUModelRunner&lt;br&gt;_prepare_inputs：block_table / slot_mapping / query_start_loc&lt;br&gt;逐层 Attention Backend（flash / triton / cpu / linear / mamba）→ logits&lt;br&gt;Sampler：惩罚 → logit bias → temperature → min_p/topK/topP → token_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3EEF9;strokeColor=#8E44AD;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#4A2A6B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1020" width="700" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="n5" value="干什么：组 batch、喂 GPU、注意力、采样出 token id&lt;br&gt;关键符号：GPUModelRunner.execute_model / _prepare_inputs / Sampler.forward&lt;br&gt;循环体：是（async scheduling 时一圈拆成 execute_model + sample_tokens 两拍）" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1020" width="640" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s6" value="⑥ 回流（循环体第三站）&lt;br&gt;&lt;br&gt;scheduler.update_from_output(scheduler_output, model_output)&lt;br&gt;→ EngineCoreOutputs → output_queue → process_output_sockets（zmq.PUSH）&lt;br&gt;★ 跨进程就在这里发生：EngineCore → APIServer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3EEF9;strokeColor=#8E44AD;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#4A2A6B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1260" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n6" value="干什么：把本圈新出的 token 打包、送出进程 B&lt;br&gt;关键符号：Scheduler.update_from_output / process_output_sockets&lt;br&gt;循环体：是" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1260" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s7" value="⑦ 出站（回到进程 A）&lt;br&gt;&lt;br&gt;output_handler 取回 EngineCoreOutputs（zmq.PULL）&lt;br&gt;output_processor.process_outputs → 增量 detokenize → RequestOutput&lt;br&gt;→ asyncio.Queue → SSE chunk → 客户端" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF2FB;strokeColor=#2E6FDA;strokeWidth=2;align=left;verticalAlign=top;spacing=10;fontSize=13;fontColor=#12395B;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1490" width="700" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="n7" value="干什么：token id → 文本（增量 detokenize）、推 SSE&lt;br&gt;关键符号：AsyncLLM._run_output_handler / OutputProcessor.process_outputs&lt;br&gt;循环体：是 —— 每圈吐一段；未 finished 就回到 ④ 再来一圈" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#F7F7F7;strokeColor=#BBBBBB;align=left;verticalAlign=top;spacing=8;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1490" width="640" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="s1" target="s2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e23" value="zmq ROUTER → DEALER（进程 A → B）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;fontColor=#777777;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s2" target="s3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="s4" target="s5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e56" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="s5" target="s6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e67" value="zmq PUSH → PULL（进程 B → A）" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#555555;strokeWidth=2;endArrow=classic;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;fontColor=#777777;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s6" target="s7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="eloop" value="★ step() 循环：每圈 = 1 个 decode token" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#C0392B;strokeWidth=3;endArrow=classic;startArrow=classic;exitX=0;exitY=0.5;entryX=0;entryY=0.5;fontSize=13;fontColor=#C0392B;labelBackgroundColor=#FFFFFF;fontStyle=1;" edge="1" parent="1" source="s6" target="s4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="80" y="1335"/>
+              <mxPoint x="80" y="865"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="lg1" value="legend" style="text;html=1;fontSize=14;fontStyle=1;fontColor=#333333;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1690" width="200" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg2" value="" style="rounded=0;fillColor=#EAF2FB;strokeColor=#2E6FDA;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1720" width="34" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg3" value="进程 A：APIServer（① ② ⑦）" style="text;html=1;fontSize=12;fontColor=#333333;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="192" y="1718" width="400" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg4" value="" style="rounded=0;fillColor=#F3EEF9;strokeColor=#8E44AD;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="620" y="1720" width="34" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg5" value="进程 B：EngineCore（③④⑤⑥；Worker / Model Runner 在其内部）" style="text;html=1;fontSize=12;fontColor=#333333;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="662" y="1718" width="700" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg6" value="" style="rounded=1;fillColor=#FFFFFF;strokeColor=#C0392B;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1752" width="34" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lg7" value="★ 循环体内 / KV 分配站（④）" style="text;html=1;fontSize=12;fontColor=#333333;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="192" y="1750" width="400" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="foot1" value="一次 39 token 的回答 ≈ 1 圈 prefill（首圈吃完整条 prompt）+ 38～39 圈 decode。无请求时 step() 第一行就返回（has_requests 为假），不跑 GPU，只睡 1ms 等活。" style="text;html=1;fontSize=12;fontColor=#777777;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1790" width="1370" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="foot2" value="配套文字：docs/17-生命周期草图.md　｜　这张图不写文件行号，行号见那份 md 的附表" style="text;html=1;fontSize=12;fontColor=#777777;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1816" width="1100" height="24" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

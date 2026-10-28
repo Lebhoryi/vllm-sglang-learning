@@ -36,4 +36,4 @@ tmp-piai/
 .npm-tmp/
 .dsh
 .scratch
-.logs
+logs
