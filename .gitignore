@@ -37,3 +37,8 @@ tmp-piai/
 .dsh
 .scratch
 logs
+
+# ===== 图表备份 / 旧版大图（不入 git）=====
+*.bak
+*.bak-*
+流程图*old*.jpg
